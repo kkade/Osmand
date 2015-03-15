@@ -74,15 +74,5 @@ public class Reshaper {
 		}
 
 	}
-	/*
-	public static void main(String[] args) {
-//		char[] c = new char[] {'א', 'ד','ם', ' ', '1', '2'} ;
-//		String reshape = "אדם";
-		char[] c = new char[] {'א', 'ד','ם'} ;
-		String reshape = reshape(new String(c));
-		for(int i=0; i < reshape.length(); i++) {
-			System.out.println(reshape.charAt(i));
-		}
-	}*/
 
 }

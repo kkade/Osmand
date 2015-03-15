@@ -185,13 +185,13 @@ task updateNoTranslate(type: Copy) {
 }
 
 task collectVoiceAssets(type: Sync) {
-	from "../../resources/voice"
+	from "../../OsmAnd-resources/voice"
 	into "assets/voice"
 	include "**/*.p"
 }
 
 task collectSpecialPhrasesAssets(type: Sync) {
-	from "../../resources/specialphrases"
+	from "../../OsmAnd-resources/specialphrases"
 	into "assets/specialphrases"
 	include "*.txt"
 }
@@ -208,49 +208,49 @@ task collectHelpContentsAssets(type: Sync) {
 }
 
 task collectRoutingResources(type: Sync) {
-	from "../../resources/routing"
+	from "../../OsmAnd-resources/routing"
 	into "src/net/osmand/router"
 	include "*.xml"
 }
 
 task collectMiscResources(type: Copy) {
 	into "src/net/osmand/osm"
-	from("../../resources/obf_creation") {
+	from("../../OsmAnd-resources/obf_creation") {
 		include "rendering_types.xml"
 	}
-	from("../../resources/poi") {
+	from("../../OsmAnd-resources/poi") {
 		include "poi_types.xml"
 	}
 }
 
 task collectRenderingStylesResources(type: Sync) {
-	from "../../resources/rendering_styles"
+	from "../../OsmAnd-resources/rendering_styles"
 	into "src/net/osmand/render"
 	include "*.xml"
 }
 
 task collectRegionsInfoResources(type: Copy) {
-	from "../../resources/countries-info"
+	from "../../OsmAnd-resources/countries-info"
 	into "src/net/osmand/map"
 	include "regions.ocbf"
 }
 
 task copyStyleIcons(type: Copy) {
-	from "../../resources/rendering_styles/style-icons/"
+	from "../../OsmAnd-resources/rendering_styles/style-icons/"
 	into "res/"
 	include "**/*.png"
 }
 
-task collectExternalResources << {}
-collectExternalResources.dependsOn collectVoiceAssets,
-		collectSpecialPhrasesAssets,
-		collectHelpContentsAssets,
-		collectRoutingResources,
-		collectRenderingStylesResources,
-		collectRegionsInfoResources,
-		collectMiscResources,
-		copyStyleIcons,
-		updateNoTranslate
+task collectExternalResources (dependsOn: ['collectVoiceAssets',
+                                           'collectSpecialPhrasesAssets',
+                                           'collectHelpContentsAssets',
+                                           'collectRoutingResources',
+                                           'collectRenderingStylesResources',
+                                           'collectRegionsInfoResources',
+                                           'collectMiscResources',
+                                           'copyStyleIcons',
+                                           'updateNoTranslate'])
+
 tasks.whenTaskAdded { task ->
 	if (task.name.startsWith("generate") && task.name.endsWith("Resources")) {
 		task.dependsOn collectExternalResources

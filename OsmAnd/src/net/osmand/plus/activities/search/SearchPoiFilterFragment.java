@@ -159,7 +159,7 @@ public class SearchPoiFilterFragment extends ListFragment implements SearchActiv
 				if(RenderingIcons.containsBigIcon(model.getSimplifiedId())) {
 					icon.setImageDrawable(RenderingIcons.getBigIcon(getActivity(), model.getSimplifiedId()));
 				} else {
-					icon.setImageResource(R.drawable.mx_user_defined);
+					icon.setImageResource(R.drawable.list_warnings_traffic_calming);
 				}
 			}
 			ImageView editIcon = (ImageView) row.findViewById(R.id.folder_edit_icon);
