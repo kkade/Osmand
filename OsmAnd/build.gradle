@@ -43,7 +43,7 @@ android {
 	}
 
 	defaultConfig {
-		minSdkVersion 9
+        minSdkVersion 19
 		targetSdkVersion 21
 
 		versionCode System.getenv("APK_NUMBER_VERSION") ? System.getenv("APK_NUMBER_VERSION").toInteger() : versionCode
@@ -316,4 +316,5 @@ dependencies {
 	qtcoredebugCompile "net.osmand:OsmAndCore_android:0.1-SNAPSHOT@aar"
 	qtcoreCompile "net.osmand:OsmAndCore_androidNativeRelease:0.1-SNAPSHOT@aar"
 	qtcoreCompile "net.osmand:OsmAndCore_android:0.1-SNAPSHOT@aar"
+    compile project(':navigationmessagingapi')
 }
