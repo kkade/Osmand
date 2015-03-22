@@ -16,11 +16,12 @@ import net.osmand.util.Algorithms;
 
 import java.util.List;
 
+import ch.hsr.navigationmessagingapi.IMessageListener;
 import ch.hsr.navigationmessagingapi.MessageEndPoint;
 import ch.hsr.navigationmessagingapi.NavigationMessage;
 import ch.hsr.navigationmessagingapi.services.NavigationServiceConnector;
 
-public class SmartNaviWatchPlugin extends OsmandPlugin{
+public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListener{
 
     private OsmandApplication application;
     private RoutingHelper routing;
@@ -51,11 +52,15 @@ public class SmartNaviWatchPlugin extends OsmandPlugin{
         }
     }
 
+    @Override
+    public void messageReceived(NavigationMessage message) {
+        application.showToastMessage(message.getMessageType());
+    }
+
     private class RoutingAdapter implements RoutingHelper.IRouteInformationListener {
         @Override
         public void newRouteIsCalculated(boolean newRoute) {
             // clean the old lists
-
             updateNavigationSteps();
             NavigationMessage msg = new NavigationMessage();
             msg.setMessageType("/navigation/route/new");
@@ -88,6 +93,9 @@ public class SmartNaviWatchPlugin extends OsmandPlugin{
 
         routing.addListener(new RoutingAdapter());
         location.addLocationListener(new LocationAdapter());
+
+        // Initialize service connector
+        getServiceConnector().addMessageListener(this);
 
         return true;
     }
