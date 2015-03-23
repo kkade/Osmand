@@ -62,9 +62,8 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
         public void newRouteIsCalculated(boolean newRoute) {
             // clean the old lists
             updateNavigationSteps();
-            NavigationMessage msg = new NavigationMessage();
-            msg.setMessageType("/navigation/route/new");
-            msg.setPayload(new Integer(3));
+            NavigationMessage msg = NavigationMessage.create("/navigation/route/new", new Integer(3));
+
             getServiceConnector().sendMessage(msg);
         }
 
