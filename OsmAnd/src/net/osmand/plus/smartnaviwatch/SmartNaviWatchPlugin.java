@@ -1,6 +1,7 @@
 package net.osmand.plus.smartnaviwatch;
 
 import android.app.Activity;
+import android.util.Log;
 
 import net.osmand.Location;
 import net.osmand.plus.OsmAndLocationProvider;
@@ -8,8 +9,11 @@ import net.osmand.plus.OsmandApplication;
 import net.osmand.plus.OsmandPlugin;
 import net.osmand.plus.R;
 import net.osmand.plus.routing.RouteCalculationResult;
+import net.osmand.plus.routing.RouteDirectionInfo;
 import net.osmand.plus.routing.RoutingHelper;
 import net.osmand.util.MapUtils;
+
+import java.util.List;
 
 import ch.hsr.navigationmessagingapi.IMessageListener;
 import ch.hsr.navigationmessagingapi.MessageTypes;
@@ -29,6 +33,7 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
     // Data with information about the current routing progress
     private RouteCalculationResult.NextDirectionInfo currentInfo;
     private Location lastKnownLocation;
+    private boolean hasNotified = false;
 
     /**
      * Removes all data from the current navigation status
@@ -36,6 +41,7 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
     private void cleanRouteData() {
         lastKnownLocation = null;
         currentInfo = null;
+        hasNotified = false;
     }
 
     /**
@@ -78,8 +84,10 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
     private void updateNavigationSteps() {
         RouteCalculationResult.NextDirectionInfo n = routing.getNextRouteDirectionInfo(new RouteCalculationResult.NextDirectionInfo(), false);
 
+        // Check if the next step changed
         if(stepsAreDifferent(currentInfo, n)) {
             currentInfo = n;
+            hasNotified = false;
 
           if (currentInfo != null) application.showShortToastMessage("new step: " + currentInfo.directionInfo.getDescriptionRoute(application));
         }
@@ -91,9 +99,10 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
 
             double delta = MapUtils.getDistance(p1.getLatitude(), p1.getLongitude(), lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude());
 
-            // Closer than 5m, let's notify the user
-            if (delta < 5) {
-                application.showToastMessage("exec step: " + currentInfo.directionInfo.getDescriptionRoute(application));
+            // Closer than 15m, let's notify the user
+            if (delta < 15 && !hasNotified) {
+                sendMessage(MessageTypes.NextStepMessage, new Integer(0));
+                hasNotified = true;
             }
         }
     }
@@ -178,7 +187,7 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
 
         double delta = MapUtils.getDistance(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude(), location.getLatitude(), location.getLongitude());
 
-        return delta >= 4;
+        return delta >= 1;
     }
 
     /**
