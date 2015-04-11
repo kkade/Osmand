@@ -1,9 +1,14 @@
 package net.osmand.plus.smartnaviwatch;
 
 import android.app.Activity;
+import android.os.Bundle;
+import android.os.Parcel;
+import android.os.PersistableBundle;
 import android.util.Log;
 
 import net.osmand.Location;
+import net.osmand.binary.BinaryMapDataObject;
+import net.osmand.binary.BinaryMapIndexReader;
 import net.osmand.plus.OsmAndLocationProvider;
 import net.osmand.plus.OsmandApplication;
 import net.osmand.plus.OsmandPlugin;
@@ -11,11 +16,14 @@ import net.osmand.plus.R;
 import net.osmand.plus.routing.RouteCalculationResult;
 import net.osmand.plus.routing.RouteDirectionInfo;
 import net.osmand.plus.routing.RoutingHelper;
+import net.osmand.router.TurnType;
 import net.osmand.util.MapUtils;
 
+import java.util.HashMap;
 import java.util.List;
 
 import ch.hsr.navigationmessagingapi.IMessageListener;
+import ch.hsr.navigationmessagingapi.MessageDataKeys;
 import ch.hsr.navigationmessagingapi.MessageTypes;
 import ch.hsr.navigationmessagingapi.NavigationMessage;
 import ch.hsr.navigationmessagingapi.services.NavigationServiceConnector;
@@ -70,12 +78,8 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
         // Not different because of reference equality
         if (info1 == info2) return false;
 
-        // If the other checks failed, check for proximity
-        Location p1 = routing.getRoute().getImmutableAllLocations().get(info1.directionInfo.routePointOffset);
-        Location p2 = routing.getRoute().getImmutableAllLocations().get(info2.directionInfo.routePointOffset);
-        double delta = MapUtils.getDistance(p1.getLatitude(), p1.getLongitude(), p2.getLatitude(), p2.getLongitude());
-
-        return delta >= 0.2; // 0.2 meters are considered equal
+        // If the other checks failed, check for route point offset
+        return info1.directionInfo.routePointOffset != info2.directionInfo.routePointOffset;
     }
 
     /**
@@ -95,13 +99,12 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
         // Check distance to the current step, if smaller than a certain radius,
         // tell the user to execute the step
         if (currentInfo != null && lastKnownLocation != null) {
-            Location p1 = routing.getRoute().getImmutableAllLocations().get(currentInfo.directionInfo.routePointOffset);
+            Location p1 = routing.getRoute().getLocationFromRouteDirection(currentInfo.directionInfo);
 
+            // Closer than 15m? Then notify the user.
             double delta = MapUtils.getDistance(p1.getLatitude(), p1.getLongitude(), lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude());
-
-            // Closer than 15m, let's notify the user
             if (delta < 15 && !hasNotified) {
-                sendMessage(MessageTypes.NextStepMessage, new Integer(0));
+                sendMessage(MessageTypes.NextStepMessage, createCurrentStepBundle(currentInfo.directionInfo));
                 hasNotified = true;
             }
         }
@@ -113,7 +116,21 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
      */
     @Override
     public void messageReceived(NavigationMessage message) {
-        application.showToastMessage(message.getMessageType());
+        switch(message.getMessageType()) {
+            case MessageTypes.PositionRequest:
+                findLocationAndRespond();
+                break;
+            default:
+                break;
+        }
+    }
+
+    /**
+     * Finds the current location of the user and gets an appropriate street name / location description
+     */
+    private void findLocationAndRespond() {
+        //location.getLastKnownLocation().
+        // Read map and show it to the user
     }
 
     /**
@@ -130,7 +147,13 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
         public void newRouteIsCalculated(boolean newRoute) {
             cleanRouteData();
 
-            sendMessage(MessageTypes.NewRouteMessage, new Integer(0));
+            // Get the first instruction
+            List<RouteDirectionInfo> directionInfos = routing.getRouteDirections();
+            if (directionInfos.size() > 0) {
+                RouteDirectionInfo firstStep = directionInfos.get(0);
+
+                sendMessage(MessageTypes.NewRouteMessage, createCurrentStepBundle(firstStep));
+            }
         }
 
         /**
@@ -156,6 +179,23 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
     }
 
     /**
+     * Creates a HashMap of data from the route direction info
+     * @param info Information about the next step
+     * @return Bundle filled with the data
+     */
+    private HashMap<String, Object> createCurrentStepBundle(RouteDirectionInfo info) {
+        double percentage = (double)routing.getRoute().getDistanceToPoint(info.routePointOffset) / (double)routing.getRoute().getWholeDistance();
+
+        HashMap<String, Object> m = new HashMap<String, Object>();
+        m.put(MessageDataKeys.TurnType, info.getTurnType().toString());
+        m.put(MessageDataKeys.TurnAngle, info.getTurnType().getTurnAngle());
+        m.put(MessageDataKeys.Distance, info.distance); // evtl. via currentInfo.distanceTo
+        m.put(MessageDataKeys.StreetName, info.getStreetName());
+        m.put(MessageDataKeys.RouteProgressPercentage, percentage);
+        return m;
+    }
+
+    /**
      * Adapts to the location service from OsmAnd. Receives updates when the users location
      * changes.
      */
@@ -168,6 +208,15 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
         public void updateLocation(Location location) {
             if (locationChangeIsSignificant(lastKnownLocation, location)) {
                 lastKnownLocation = location;
+
+                //if (location != null) {
+                //    Log.d("loc_dat:", MapUtils.get31TileNumberX(location.getLongitude()) + "/" + MapUtils.get31TileNumberY(location.getLatitude()));
+                //    BinaryMapIndexReader[] readers = application.getResourceManager().getRoutingMapFiles();
+                //    //BinaryMapIndexReader.SearchRequest<BinaryMapDataObject> req = BinaryMapIndexReader.buildSearchRequest();
+                //    // readers [0].searchMapIndex()
+
+                //    if(readers.length>0) Log.d("loc_data:", "" + readers[0].containsMapData(MapUtils.get31TileNumberX(location.getLongitude()), MapUtils.get31TileNumberY(location.getLatitude()), 3));
+                //}
 
                 updateNavigationSteps();
             }
@@ -214,8 +263,6 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
         // Listen for location updates
         location = app.getLocationProvider();
         location.addLocationListener(new LocationAdapter());
-
-        // TODO Get reference to BinaryMapIndexReader for map updates
 
         // Listen to messages
         getServiceConnector().addMessageListener(this);
