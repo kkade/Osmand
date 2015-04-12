@@ -160,7 +160,7 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
             double mapBorderSpacing = 150;
 
             // Calculate the upper left and lower right corners of the map part
-            double arcDistance = (distanceToNextPoint+mapBorderSpacing) / 6371.0 * 0.0000001;
+            double arcDistance = (distanceToNextPoint+mapBorderSpacing) / 6371000.0 * 0.0000001;
             LatLonPoint upperLeft = GreatCircle.sphericalBetween(loc.getRadLat(), loc.getRadLon(), arcDistance, -Math.PI / 4.0);
             LatLonPoint lowerRight = GreatCircle.sphericalBetween(loc.getRadLat(), loc.getRadLon(), arcDistance, Math.PI / 4.0 * 3.0);
 
@@ -175,14 +175,17 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
                  res = reader.searchMapIndex(request);
             } catch(IOException ex) {}
 
-            if (res != null) application.showToastMessage(res.size()+"");
+            if (res != null){
+                application.showToastMessage(res.size()+"");
+                for(BinaryMapDataObject o : res) {
+                    Log.d("object found: ", o.getName());
+                    for(int i = 0; i < o.getTypes().length; i++) {
+                        BinaryMapIndexReader.TagValuePair p = o.getMapIndex().decodeType(o.getTypes()[i]);
+                        Log.d("object type: ", p.toString());
+                    }
+                }
+            }
         }
-
-
-        //readers[0].searchMapIndex()
-        //BinaryMapIndexReader.SearchRequest<BinaryMapDataObject> request = new BinaryMapIndexReader.SearchRequest<BinaryMapDataObject>();
-
-        //application.getResourceManager().getAddressRepositories().
     }
 
     /**
