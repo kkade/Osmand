@@ -1,24 +1,37 @@
 package net.osmand.plus.smartnaviwatch;
 
 import android.app.Activity;
+import android.content.Context;
+import android.graphics.Region;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.os.PersistableBundle;
 import android.util.Log;
 
+import com.jwetherell.openmap.common.GreatCircle;
+import com.jwetherell.openmap.common.LatLonPoint;
+import com.jwetherell.openmap.common.ProjMath;
+
 import net.osmand.Location;
 import net.osmand.binary.BinaryMapDataObject;
 import net.osmand.binary.BinaryMapIndexReader;
+import net.osmand.data.LatLon;
+import net.osmand.data.LocationPoint;
+import net.osmand.data.PointDescription;
+import net.osmand.data.QuadRect;
+import net.osmand.data.RotatedTileBox;
 import net.osmand.plus.OsmAndLocationProvider;
 import net.osmand.plus.OsmandApplication;
 import net.osmand.plus.OsmandPlugin;
 import net.osmand.plus.R;
+import net.osmand.plus.resources.RegionAddressRepository;
 import net.osmand.plus.routing.RouteCalculationResult;
 import net.osmand.plus.routing.RouteDirectionInfo;
 import net.osmand.plus.routing.RoutingHelper;
 import net.osmand.router.TurnType;
 import net.osmand.util.MapUtils;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 
@@ -121,6 +134,8 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
                 findLocationAndRespond();
                 break;
             default:
+                findLocationAndRespond();
+
                 break;
         }
     }
@@ -129,8 +144,45 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
      * Finds the current location of the user and gets an appropriate street name / location description
      */
     private void findLocationAndRespond() {
-        //location.getLastKnownLocation().
         // Read map and show it to the user
+        BinaryMapIndexReader[] readers = application.getResourceManager().getRoutingMapFiles();
+
+        if(readers.length > 0 && lastKnownLocation != null) {
+            BinaryMapIndexReader reader = readers[0];
+
+            // Calculate distance to the next navigation step
+            LatLonPoint loc = new LatLonPoint(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude());
+            double distanceToNextPoint = 100;
+            if (currentInfo != null) {
+                Location p2 = routing.getRoute().getLocationFromRouteDirection(currentInfo.directionInfo);
+                distanceToNextPoint = MapUtils.getDistance(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude(), p2.getLatitude(), p2.getLongitude());
+            }
+            double mapBorderSpacing = 150;
+
+            // Calculate the upper left and lower right corners of the map part
+            double arcDistance = (distanceToNextPoint+mapBorderSpacing) / 6371.0 * 0.0000001;
+            LatLonPoint upperLeft = GreatCircle.sphericalBetween(loc.getRadLat(), loc.getRadLon(), arcDistance, -Math.PI / 4.0);
+            LatLonPoint lowerRight = GreatCircle.sphericalBetween(loc.getRadLat(), loc.getRadLon(), arcDistance, Math.PI / 4.0 * 3.0);
+
+            int leftX = MapUtils.get31TileNumberX(upperLeft.getLongitude());
+            int rightX = MapUtils.get31TileNumberX(lowerRight.getLongitude());
+            int topY = MapUtils.get31TileNumberY(upperLeft.getLatitude());
+            int bottomY = MapUtils.get31TileNumberY(lowerRight.getLatitude());
+            BinaryMapIndexReader.SearchRequest<BinaryMapDataObject> request = BinaryMapIndexReader.buildSearchRequest(leftX, rightX, topY, bottomY, 15, null);
+
+            List<BinaryMapDataObject> res = null;
+            try {
+                 res = reader.searchMapIndex(request);
+            } catch(IOException ex) {}
+
+            if (res != null) application.showToastMessage(res.size()+"");
+        }
+
+
+        //readers[0].searchMapIndex()
+        //BinaryMapIndexReader.SearchRequest<BinaryMapDataObject> request = new BinaryMapIndexReader.SearchRequest<BinaryMapDataObject>();
+
+        //application.getResourceManager().getAddressRepositories().
     }
 
     /**
@@ -209,14 +261,6 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
             if (locationChangeIsSignificant(lastKnownLocation, location)) {
                 lastKnownLocation = location;
 
-                //if (location != null) {
-                //    Log.d("loc_dat:", MapUtils.get31TileNumberX(location.getLongitude()) + "/" + MapUtils.get31TileNumberY(location.getLatitude()));
-                //    BinaryMapIndexReader[] readers = application.getResourceManager().getRoutingMapFiles();
-                //    //BinaryMapIndexReader.SearchRequest<BinaryMapDataObject> req = BinaryMapIndexReader.buildSearchRequest();
-                //    // readers [0].searchMapIndex()
-
-                //    if(readers.length>0) Log.d("loc_data:", "" + readers[0].containsMapData(MapUtils.get31TileNumberX(location.getLongitude()), MapUtils.get31TileNumberY(location.getLatitude()), 3));
-                //}
 
                 updateNavigationSteps();
             }
