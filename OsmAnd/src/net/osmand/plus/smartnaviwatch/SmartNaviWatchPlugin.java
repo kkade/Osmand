@@ -1,6 +1,7 @@
 package net.osmand.plus.smartnaviwatch;
 
 import android.app.Activity;
+import android.graphics.Point;
 import android.util.Log;
 import net.osmand.Location;
 import net.osmand.binary.BinaryMapDataObject;
@@ -19,6 +20,8 @@ import java.util.HashMap;
 import java.util.List;
 
 import ch.hsr.navigationmessagingapi.IMessageListener;
+import ch.hsr.navigationmessagingapi.MapPolygon;
+import ch.hsr.navigationmessagingapi.MapPolygonCollection;
 import ch.hsr.navigationmessagingapi.MessageDataKeys;
 import ch.hsr.navigationmessagingapi.MessageTypes;
 import ch.hsr.navigationmessagingapi.NavigationMessage;
@@ -151,16 +154,49 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
 
             if (res != null){
                 application.showToastMessage(res.size()+"");
-                for(BinaryMapDataObject o : res) {
-                    Log.d("object found: ", o.getName());
-                    for(int i = 0; i < o.getTypes().length; i++) {
-                        BinaryMapIndexReader.TagValuePair p = o.getMapIndex().decodeType(o.getTypes()[i]);
+                MapPolygonCollection c = new MapPolygonCollection();
 
-                        Log.d("object type: ", p.toString());
-                    }
+                for(BinaryMapDataObject o : res) {
+                    c.add(polygonFromDataObject(o));
+                    Log.d("", o.getName());
                 }
+                c.normalize();
+
+                HashMap<String, Object> msgData = currentInfo!= null ? createCurrentStepBundle(currentInfo.directionInfo) : new HashMap<String, Object>();
+                msgData.put(MessageDataKeys.MapPolygonData, c);
+                sendMessage(MessageTypes.PositionMessage, messageService);
             }
         }
+    }
+
+    /**
+     * Converts a MapDataObject into a polygon
+     * @param obj    Map Data Object
+     * @return       Polygon
+     */
+    private MapPolygon polygonFromDataObject(BinaryMapDataObject obj) {
+        // convert points on the outside of the polygon
+        Point[] outsidePoints = new Point[obj.getPointsLength()];
+        for(int p = 0; p < outsidePoints.length; p++) {
+            outsidePoints[p] = new Point(obj.getPoint31XTile(p), obj.getPoint31YTile(p));
+        }
+
+        // convert inner polygons
+        int[][] insidePointData = obj.getPolygonInnerCoordinates();
+        Point[][] insidePoints = new Point[insidePointData.length][];
+
+        // loop through list of inner polygons
+        for(int poly = 0; poly < insidePointData.length; poly++) {
+            insidePoints[poly] = new Point[insidePointData[poly].length/2];
+
+            // Loop through point coordinate array [x,y,x1,y2 ...]
+            for(int innerPoint = 0, currentPoint = 0; innerPoint < insidePointData[poly].length; currentPoint++, innerPoint+=2) {
+                insidePoints[poly][currentPoint] = new Point(insidePointData[poly][innerPoint], insidePointData[poly][innerPoint + 1]);
+            }
+        }
+
+        // TODO: Type for rendering, i.e. Grass/Road/Water/Train ...
+        return new MapPolygon(0, outsidePoints, insidePoints);
     }
 
     /**
@@ -175,10 +211,14 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
         int x31Distance = (int)Math.ceil(distanceInMeters / MapUtils.convert31XToMeters(1,0));
         int y31Distance = (int)Math.ceil(distanceInMeters / MapUtils.convert31YToMeters(1,0));
 
+        Log.d("dx", x31Distance+"");
+        Log.d("dy", y31Distance+"");
+
         int leftX = MapUtils.get31TileNumberX(lastKnownLocation.getLongitude()) - x31Distance;
         int rightX = MapUtils.get31TileNumberX(lastKnownLocation.getLongitude()) + x31Distance;
         int topY = MapUtils.get31TileNumberY(lastKnownLocation.getLatitude()) - y31Distance;
         int bottomY = MapUtils.get31TileNumberY(lastKnownLocation.getLatitude()) + y31Distance;
+
         return BinaryMapIndexReader.buildSearchRequest(leftX, rightX, topY, bottomY, 15, null);
     }
 
