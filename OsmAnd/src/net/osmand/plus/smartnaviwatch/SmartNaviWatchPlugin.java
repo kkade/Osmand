@@ -3,9 +3,15 @@ package net.osmand.plus.smartnaviwatch;
 import android.app.Activity;
 import android.graphics.Point;
 import android.util.Log;
+
+import com.jwetherell.openmap.common.GreatCircle;
+import com.jwetherell.openmap.common.LatLonPoint;
+
 import net.osmand.Location;
 import net.osmand.binary.BinaryMapDataObject;
 import net.osmand.binary.BinaryMapIndexReader;
+import net.osmand.data.QuadRect;
+import net.osmand.data.RotatedTileBox;
 import net.osmand.plus.OsmAndLocationProvider;
 import net.osmand.plus.OsmandApplication;
 import net.osmand.plus.OsmandPlugin;
@@ -157,8 +163,8 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
                 MapPolygonCollection c = new MapPolygonCollection();
 
                 for(BinaryMapDataObject o : res) {
-                    c.add(polygonFromDataObject(o));
-                    Log.d("", o.getName());
+                    MapPolygon poly = polygonFromDataObject(o);
+                    c.add(poly);
                 }
                 c.normalize();
 
@@ -202,22 +208,21 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
     /**
      * Creates a SearchRequest that searches a square (side = 2*distanceInMeters) with it's center
      * aligned to the specified location
-     * @param loc Location of the center of the square
+     * @param position Location of the center of the square
      * @param distanceInMeters Half of the length of the square
      * @return SearchRequest
      */
-    private BinaryMapIndexReader.SearchRequest<BinaryMapDataObject> buildRequestAround(Location loc, double distanceInMeters) {
+    private BinaryMapIndexReader.SearchRequest<BinaryMapDataObject> buildRequestAround(Location position, double distanceInMeters) {
         // Calculate the upper left and lower right corners of the map part
-        int x31Distance = (int)Math.ceil(distanceInMeters / MapUtils.convert31XToMeters(1,0));
-        int y31Distance = (int)Math.ceil(distanceInMeters / MapUtils.convert31YToMeters(1,0));
+        double arcDistance = distanceInMeters / 6371000.0 * 0.0000001;
+        LatLonPoint loc = new LatLonPoint(position.getLatitude(), position.getLongitude());
+        LatLonPoint upperLeft = GreatCircle.sphericalBetween(loc.getRadLat(), loc.getRadLon(), arcDistance, -Math.PI / 4.0);
+        LatLonPoint lowerRight = GreatCircle.sphericalBetween(loc.getRadLat(), loc.getRadLon(), arcDistance, Math.PI / 4.0 * 3.0);
 
-        Log.d("dx", x31Distance+"");
-        Log.d("dy", y31Distance+"");
-
-        int leftX = MapUtils.get31TileNumberX(lastKnownLocation.getLongitude()) - x31Distance;
-        int rightX = MapUtils.get31TileNumberX(lastKnownLocation.getLongitude()) + x31Distance;
-        int topY = MapUtils.get31TileNumberY(lastKnownLocation.getLatitude()) - y31Distance;
-        int bottomY = MapUtils.get31TileNumberY(lastKnownLocation.getLatitude()) + y31Distance;
+        int leftX = MapUtils.get31TileNumberX(upperLeft.getLongitude());
+        int rightX = MapUtils.get31TileNumberX(lowerRight.getLongitude());
+        int topY = MapUtils.get31TileNumberY(upperLeft.getLatitude());
+        int bottomY = MapUtils.get31TileNumberY(lowerRight.getLatitude());
 
         return BinaryMapIndexReader.buildSearchRequest(leftX, rightX, topY, bottomY, 15, null);
     }
