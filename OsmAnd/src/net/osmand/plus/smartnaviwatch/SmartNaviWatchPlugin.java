@@ -1,8 +1,6 @@
 package net.osmand.plus.smartnaviwatch;
 
 import android.app.Activity;
-import android.graphics.Point;
-import android.util.Log;
 
 import com.jwetherell.openmap.common.GreatCircle;
 import com.jwetherell.openmap.common.LatLonPoint;
@@ -10,8 +8,6 @@ import com.jwetherell.openmap.common.LatLonPoint;
 import net.osmand.Location;
 import net.osmand.binary.BinaryMapDataObject;
 import net.osmand.binary.BinaryMapIndexReader;
-import net.osmand.data.QuadRect;
-import net.osmand.data.RotatedTileBox;
 import net.osmand.plus.OsmAndLocationProvider;
 import net.osmand.plus.OsmandApplication;
 import net.osmand.plus.OsmandPlugin;
@@ -31,6 +27,7 @@ import ch.hsr.navigationmessagingapi.MapPolygonCollection;
 import ch.hsr.navigationmessagingapi.MessageDataKeys;
 import ch.hsr.navigationmessagingapi.MessageTypes;
 import ch.hsr.navigationmessagingapi.NavigationMessage;
+import ch.hsr.navigationmessagingapi.PolygonPoint;
 import ch.hsr.navigationmessagingapi.services.NavigationServiceConnector;
 
 public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListener{
@@ -121,6 +118,7 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
      */
     @Override
     public void messageReceived(NavigationMessage message) {
+        application.showToastMessage(message.getMessageType());
         switch(message.getMessageType()) {
             case MessageTypes.PositionRequest:
                 findLocationAndRespond();
@@ -170,7 +168,7 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
 
                 HashMap<String, Object> msgData = currentInfo!= null ? createCurrentStepBundle(currentInfo.directionInfo) : new HashMap<String, Object>();
                 msgData.put(MessageDataKeys.MapPolygonData, c);
-                sendMessage(MessageTypes.PositionMessage, messageService);
+                sendMessage(MessageTypes.PositionMessage, msgData);
             }
         }
     }
@@ -182,22 +180,22 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
      */
     private MapPolygon polygonFromDataObject(BinaryMapDataObject obj) {
         // convert points on the outside of the polygon
-        Point[] outsidePoints = new Point[obj.getPointsLength()];
+        PolygonPoint[] outsidePoints = new PolygonPoint[obj.getPointsLength()];
         for(int p = 0; p < outsidePoints.length; p++) {
-            outsidePoints[p] = new Point(obj.getPoint31XTile(p), obj.getPoint31YTile(p));
+            outsidePoints[p] = new PolygonPoint(obj.getPoint31XTile(p), obj.getPoint31YTile(p));
         }
 
         // convert inner polygons
         int[][] insidePointData = obj.getPolygonInnerCoordinates();
-        Point[][] insidePoints = new Point[insidePointData.length][];
+        PolygonPoint[][] insidePoints = new PolygonPoint[insidePointData.length][];
 
         // loop through list of inner polygons
         for(int poly = 0; poly < insidePointData.length; poly++) {
-            insidePoints[poly] = new Point[insidePointData[poly].length/2];
+            insidePoints[poly] = new PolygonPoint[insidePointData[poly].length/2];
 
             // Loop through point coordinate array [x,y,x1,y2 ...]
             for(int innerPoint = 0, currentPoint = 0; innerPoint < insidePointData[poly].length; currentPoint++, innerPoint+=2) {
-                insidePoints[poly][currentPoint] = new Point(insidePointData[poly][innerPoint], insidePointData[poly][innerPoint + 1]);
+                insidePoints[poly][currentPoint] = new PolygonPoint(insidePointData[poly][innerPoint], insidePointData[poly][innerPoint + 1]);
             }
         }
 
@@ -267,7 +265,6 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
      * @param payload Content of the message
      */
     private void sendMessage(String messageType, Object payload) {
-        application.showToastMessage("send: " + messageType);
         NavigationMessage msg = NavigationMessage.create(messageType, payload);
         getServiceConnector().sendMessage(msg);
     }
