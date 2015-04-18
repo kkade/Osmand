@@ -1,6 +1,7 @@
 package net.osmand.plus.smartnaviwatch;
 
 import android.app.Activity;
+import android.util.Log;
 
 import com.jwetherell.openmap.common.GreatCircle;
 import com.jwetherell.openmap.common.LatLonPoint;
@@ -24,6 +25,7 @@ import java.util.List;
 import ch.hsr.navigationmessagingapi.IMessageListener;
 import ch.hsr.navigationmessagingapi.MapPolygon;
 import ch.hsr.navigationmessagingapi.MapPolygonCollection;
+import ch.hsr.navigationmessagingapi.MapPolygonTypes;
 import ch.hsr.navigationmessagingapi.MessageDataKeys;
 import ch.hsr.navigationmessagingapi.MessageTypes;
 import ch.hsr.navigationmessagingapi.NavigationMessage;
@@ -141,8 +143,8 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
             BinaryMapIndexReader reader = readers[0];
 
             // Calculate distance to the next navigation step
-            double distanceToNextPoint = 100;
-            double mapBorderSpacing = 150;
+            double distanceToNextPoint = 50;
+            double mapBorderSpacing = 100;
             if (currentInfo != null) {
                 Location p2 = routing.getRoute().getLocationFromRouteDirection(currentInfo.directionInfo);
                 distanceToNextPoint = MapUtils.getDistance(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude(), p2.getLatitude(), p2.getLongitude());
@@ -159,10 +161,11 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
             if (res != null){
                 application.showToastMessage(res.size()+"");
                 MapPolygonCollection c = new MapPolygonCollection();
+                c.setUserPosition(new PolygonPoint(MapUtils.get31TileNumberX(lastKnownLocation.getLongitude()), MapUtils.get31TileNumberY(lastKnownLocation.getLatitude())));
 
                 for(BinaryMapDataObject o : res) {
                     MapPolygon poly = polygonFromDataObject(o);
-                    c.add(poly);
+                    if (poly.getType() != MapPolygonTypes.UNKNOWN) c.add(poly);
                 }
                 c.normalize();
 
@@ -179,6 +182,7 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
      * @return       Polygon
      */
     private MapPolygon polygonFromDataObject(BinaryMapDataObject obj) {
+
         // convert points on the outside of the polygon
         PolygonPoint[] outsidePoints = new PolygonPoint[obj.getPointsLength()];
         for(int p = 0; p < outsidePoints.length; p++) {
@@ -199,8 +203,56 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
             }
         }
 
-        // TODO: Type for rendering, i.e. Grass/Road/Water/Train ...
-        return new MapPolygon(0, outsidePoints, insidePoints);
+        // Deduct type for rendering
+        int[] typeCodes = obj.getTypes();
+        MapPolygonTypes type = MapPolygonTypes.UNKNOWN;
+        for(int t = 0; t < typeCodes.length && type == MapPolygonTypes.UNKNOWN; t++) {
+            BinaryMapIndexReader.TagValuePair pair = obj.getMapIndex().decodeType(typeCodes[t]);
+            type = deductType(pair.tag + "." + pair.value);
+        }
+
+        // Set name and return
+        MapPolygon mapObj = new MapPolygon(type, outsidePoints, insidePoints);
+        mapObj.setName(obj.getName());
+        return mapObj;
+    }
+
+    private MapPolygonTypes deductType(String s) {
+        MapPolygonTypes result = MapPolygonTypes.UNKNOWN;
+
+        switch(s){
+            case "highway.footway":
+                result = MapPolygonTypes.ROAD_FOOTWAY;
+                break;
+            case "highway.residential":
+                result = MapPolygonTypes.ROAD_RESIDENTIAL;
+                break;
+            case "highway.secondary":
+                result = MapPolygonTypes.ROAD_SECONDARY;
+                break;
+            case "highway.tertiary":
+                result = MapPolygonTypes.ROAD_TERTIARY;
+                break;
+            case "highway.motorway":
+            case "highway.primary":
+                result = MapPolygonTypes.ROAD_MOTORWAY;
+                break;
+            case "building.null":
+            case "building.yes":
+                result = MapPolygonTypes.BUILDING;
+                break;
+            default:
+                if (s.startsWith("highway.")) {
+                    result = MapPolygonTypes.ROAD_DEFAULT;
+                }
+                else if (s.startsWith("building.")) {
+                    result = MapPolygonTypes.BUILDING;
+                }
+                Log.d("type not found", "got " + s + " created " + result);
+                break;
+        }
+
+        return result;
     }
 
     /**
@@ -212,7 +264,7 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
      */
     private BinaryMapIndexReader.SearchRequest<BinaryMapDataObject> buildRequestAround(Location position, double distanceInMeters) {
         // Calculate the upper left and lower right corners of the map part
-        double arcDistance = distanceInMeters / 6371000.0 * 0.0000001;
+        double arcDistance = distanceInMeters / 6371000d; // Winkel in rad = Bogenlänge / Radius
         LatLonPoint loc = new LatLonPoint(position.getLatitude(), position.getLongitude());
         LatLonPoint upperLeft = GreatCircle.sphericalBetween(loc.getRadLat(), loc.getRadLon(), arcDistance, -Math.PI / 4.0);
         LatLonPoint lowerRight = GreatCircle.sphericalBetween(loc.getRadLat(), loc.getRadLon(), arcDistance, Math.PI / 4.0 * 3.0);
@@ -222,7 +274,7 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
         int topY = MapUtils.get31TileNumberY(upperLeft.getLatitude());
         int bottomY = MapUtils.get31TileNumberY(lowerRight.getLatitude());
 
-        return BinaryMapIndexReader.buildSearchRequest(leftX, rightX, topY, bottomY, 15, null);
+        return BinaryMapIndexReader.buildSearchRequest(leftX, rightX, topY, bottomY, 17, null);
     }
 
     /**
