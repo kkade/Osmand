@@ -19,6 +19,7 @@ import net.osmand.plus.routing.RoutingHelper;
 import net.osmand.util.MapUtils;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
@@ -167,6 +168,7 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
                     MapPolygon poly = polygonFromDataObject(o);
                     if (poly.getType() != MapPolygonTypes.UNKNOWN) c.add(poly);
                 }
+                Collections.sort(c.getPolygons());
                 c.normalize();
 
                 HashMap<String, Object> msgData = currentInfo!= null ? createCurrentStepBundle(currentInfo.directionInfo) : new HashMap<String, Object>();
@@ -234,13 +236,19 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
                 result = MapPolygonTypes.ROAD_TERTIARY;
                 break;
             case "highway.motorway":
-            case "highway.primary":
+            case "highway.motorway_link":
                 result = MapPolygonTypes.ROAD_MOTORWAY;
+                break;
+            case "highway.primary":
+            case "highway.trunk":
+                result = MapPolygonTypes.ROAD_PRIMARY;
                 break;
             case "building.null":
             case "building.yes":
                 result = MapPolygonTypes.BUILDING;
                 break;
+            case "natural.water":
+                result = MapPolygonTypes.WATER;
             default:
                 if (s.startsWith("highway.")) {
                     result = MapPolygonTypes.ROAD_DEFAULT;
@@ -248,9 +256,14 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
                 else if (s.startsWith("building.")) {
                     result = MapPolygonTypes.BUILDING;
                 }
-                Log.d("type not found", "got " + s + " created " + result);
+                else if (s.startsWith("railway.")) {
+                    result = MapPolygonTypes.RAILWAY;
+                }
                 break;
         }
+
+        Log.d("type ", "got " + s + " created " + result);
+
 
         return result;
     }
