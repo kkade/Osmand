@@ -144,13 +144,14 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
             BinaryMapIndexReader reader = readers[0];
 
             // Calculate distance to the next navigation step
-            double distanceToNextPoint = 50;
             double mapBorderSpacing = 100;
+            double minVisibleRange = 150;
+            double distanceToNextPoint = 0;
             if (currentInfo != null) {
                 Location p2 = routing.getRoute().getLocationFromRouteDirection(currentInfo.directionInfo);
                 distanceToNextPoint = MapUtils.getDistance(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude(), p2.getLatitude(), p2.getLongitude());
             }
-            double visibleRange = distanceToNextPoint + mapBorderSpacing;
+            double visibleRange = Math.max(minVisibleRange, distanceToNextPoint + mapBorderSpacing);
 
             BinaryMapIndexReader.SearchRequest<BinaryMapDataObject> request = buildRequestAround(lastKnownLocation, visibleRange);
 
@@ -164,10 +165,26 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
                 MapPolygonCollection c = new MapPolygonCollection();
                 c.setUserPosition(new PolygonPoint(MapUtils.get31TileNumberX(lastKnownLocation.getLongitude()), MapUtils.get31TileNumberY(lastKnownLocation.getLatitude())));
 
+                // Add all the objects on the map
                 for(BinaryMapDataObject o : res) {
                     MapPolygon poly = polygonFromDataObject(o);
                     if (poly.getType() != MapPolygonTypes.UNKNOWN) c.add(poly);
                 }
+
+                // Add the current routing path if found
+                if (currentInfo != null) {
+                    List<Location> routePoints = routing.getRoute().getImmutableAllLocations();
+                    PolygonPoint[] pointPath = new PolygonPoint[routePoints.size()];
+                    PolygonPoint[][] emptyInner = new PolygonPoint[0][];
+
+                    for(int rp = 0; rp < routePoints.size(); rp++){
+                        Location l = routePoints.get(0);
+                        pointPath[rp] = new PolygonPoint(MapUtils.get31TileNumberX(l.getLongitude()), MapUtils.get31TileNumberY(l.getLatitude()));
+                    }
+
+                    c.add(new MapPolygon(MapPolygonTypes.ROUTE_PATH, pointPath, emptyInner));
+                }
+
                 Collections.sort(c.getPolygons());
                 c.normalize();
 
