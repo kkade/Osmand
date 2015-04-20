@@ -163,7 +163,11 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
             if (res != null){
                 application.showToastMessage(res.size()+"");
                 MapPolygonCollection c = new MapPolygonCollection();
+
+                // Set the users position and the current view range
                 c.setUserPosition(new PolygonPoint(MapUtils.get31TileNumberX(lastKnownLocation.getLongitude()), MapUtils.get31TileNumberY(lastKnownLocation.getLatitude())));
+                c.setTopLeftViewRange(new PolygonPoint(request.getLeft(), request.getTop()));
+                c.setBottomRightViewRange(new PolygonPoint(request.getRight(), request.getBottom()));
 
                 // Add all the objects on the map
                 for(BinaryMapDataObject o : res) {
