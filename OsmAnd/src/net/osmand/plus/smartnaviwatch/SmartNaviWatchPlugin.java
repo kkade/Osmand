@@ -127,8 +127,6 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
                 findLocationAndRespond();
                 break;
             default:
-                findLocationAndRespond();
-
                 break;
         }
     }
@@ -137,8 +135,19 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
      * Finds the current location of the user and gets an appropriate street name / location description
      */
     private void findLocationAndRespond() {
+        HashMap<String, Object> msgData = currentInfo!= null ? createCurrentStepBundle(currentInfo.directionInfo) : new HashMap<String, Object>();
+        msgData.put(MessageDataKeys.MapPolygonData, createCurrentPositionMap());
+        sendMessage(MessageTypes.PositionMessage, msgData);
+    }
+
+    /**
+     * Builds a map around the current position
+     */
+    private MapPolygonCollection createCurrentPositionMap() {
         // Read map and show it to the user
         BinaryMapIndexReader[] readers = application.getResourceManager().getRoutingMapFiles();
+
+        MapPolygonCollection c = new MapPolygonCollection();
 
         if(readers.length > 0 && lastKnownLocation != null) {
             BinaryMapIndexReader reader = readers[0];
@@ -162,7 +171,6 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
 
             if (res != null){
                 application.showToastMessage(res.size()+"");
-                MapPolygonCollection c = new MapPolygonCollection();
 
                 // Set the users position and the current view range
                 c.setUserPosition(new PolygonPoint(MapUtils.get31TileNumberX(lastKnownLocation.getLongitude()), MapUtils.get31TileNumberY(lastKnownLocation.getLatitude())));
@@ -192,11 +200,11 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
                 Collections.sort(c.getPolygons());
                 c.normalize();
 
-                HashMap<String, Object> msgData = currentInfo!= null ? createCurrentStepBundle(currentInfo.directionInfo) : new HashMap<String, Object>();
-                msgData.put(MessageDataKeys.MapPolygonData, c);
-                sendMessage(MessageTypes.PositionMessage, msgData);
+
             }
         }
+
+        return c;
     }
 
     /**
