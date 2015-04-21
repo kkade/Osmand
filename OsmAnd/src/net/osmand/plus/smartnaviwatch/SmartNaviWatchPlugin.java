@@ -154,13 +154,14 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
 
             // Calculate distance to the next navigation step
             double mapBorderSpacing = 100;
-            double minVisibleRange = 150;
+            double minVisibleRange = 100;
+            double maxVisibleRange = 200;
             double distanceToNextPoint = 0;
             if (currentInfo != null) {
                 Location p2 = routing.getRoute().getLocationFromRouteDirection(currentInfo.directionInfo);
                 distanceToNextPoint = MapUtils.getDistance(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude(), p2.getLatitude(), p2.getLongitude());
             }
-            double visibleRange = Math.max(minVisibleRange, distanceToNextPoint + mapBorderSpacing);
+            double visibleRange = Math.min(maxVisibleRange, Math.max(minVisibleRange, distanceToNextPoint + mapBorderSpacing));
 
             BinaryMapIndexReader.SearchRequest<BinaryMapDataObject> request = buildRequestAround(lastKnownLocation, visibleRange);
 
@@ -190,7 +191,7 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
                     PolygonPoint[][] emptyInner = new PolygonPoint[0][];
 
                     for(int rp = 0; rp < routePoints.size(); rp++){
-                        Location l = routePoints.get(0);
+                        Location l = routePoints.get(rp);
                         pointPath[rp] = new PolygonPoint(MapUtils.get31TileNumberX(l.getLongitude()), MapUtils.get31TileNumberY(l.getLatitude()));
                     }
 
