@@ -289,13 +289,16 @@ tasks.withType(JavaCompile) {
 }
 
 repositories {
-	ivy {
+	/*ivy {
 		name = "OsmAndBinariesIvy"
 		url = "http://builder.osmand.net"
 		layout "pattern", {
 			artifact "ivy/[organisation]/[module]/[revision]/[artifact]-[revision].[ext]"
 		}
-	}
+	}*/
+    flatDir {
+        dirs '../libOsmAndPrecompiled'
+    }
 }
 
 dependencies {
