@@ -138,7 +138,9 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
      */
     private void findLocationAndRespond() {
         HashMap<String, Object> msgData = currentInfo!= null ? createCurrentStepBundle(currentInfo.directionInfo) : new HashMap<String, Object>();
-        msgData.put(MessageDataKeys.MapPolygonData, createCurrentPositionMap());
+        MapPolygonCollection map = createCurrentPositionMap();
+        msgData.put(MessageDataKeys.MapPolygonData, map);
+        msgData.put(MessageDataKeys.LocationName, map.getLocationName());
         sendMessage(MessageTypes.PositionMessage, msgData);
     }
 
