@@ -109,7 +109,9 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
             // Closer than 15m? Then notify the user.
             double delta = MapUtils.getDistance(p1.getLatitude(), p1.getLongitude(), lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude());
             if (delta < 15 && !hasNotified) {
-                sendMessage(MessageTypes.NextStepMessage, createCurrentStepBundle(currentInfo.directionInfo));
+                HashMap<String, Object> msgData = createCurrentStepBundle(currentInfo.directionInfo);
+                msgData.put(MessageDataKeys.MapPolygonData, createCurrentPositionMap());
+                sendMessage(MessageTypes.NextStepMessage, msgData);
                 hasNotified = true;
             }
         }
