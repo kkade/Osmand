@@ -377,7 +377,7 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
         double percentage = (double)routing.getRoute().getDistanceToPoint(info.routePointOffset) / (double)routing.getRoute().getWholeDistance();
 
         HashMap<String, Object> m = new HashMap<String, Object>();
-        m.put(MessageDataKeys.TurnType, info.getTurnType().toString());
+        m.put(MessageDataKeys.TurnType, info.getTurnType().toXmlString());
         m.put(MessageDataKeys.TurnAngle, info.getTurnType().getTurnAngle());
         m.put(MessageDataKeys.Distance, info.distance); // evtl. via currentInfo.distanceTo
         m.put(MessageDataKeys.StreetName, info.getStreetName());
