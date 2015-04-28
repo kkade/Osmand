@@ -52,7 +52,6 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
      * Removes all data from the current navigation status
      */
     private void cleanRouteData() {
-        lastKnownLocation = null;
         currentInfo = null;
         hasNotified = false;
     }
@@ -108,7 +107,7 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
 
             // Closer than 15m? Then notify the user.
             double delta = MapUtils.getDistance(p1.getLatitude(), p1.getLongitude(), lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude());
-            if (delta < 15 && !hasNotified) {
+            if (delta < 30 && !hasNotified) {
                 HashMap<String, Object> msgData = createCurrentStepBundle(currentInfo.directionInfo);
                 msgData.put(MessageDataKeys.MapPolygonData, createCurrentPositionMap());
                 sendMessage(MessageTypes.NextStepMessage, msgData);
@@ -137,11 +136,12 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
      * Finds the current location of the user and gets an appropriate street name / location description
      */
     private void findLocationAndRespond() {
-        HashMap<String, Object> msgData = currentInfo!= null ? createCurrentStepBundle(currentInfo.directionInfo) : new HashMap<String, Object>();
+        boolean isNavigating = currentInfo!= null;
+        HashMap<String, Object> msgData = isNavigating ? createCurrentStepBundle(currentInfo.directionInfo) : new HashMap<String, Object>();
         MapPolygonCollection map = createCurrentPositionMap();
         msgData.put(MessageDataKeys.MapPolygonData, map);
         msgData.put(MessageDataKeys.LocationName, map.getLocationName());
-        sendMessage(MessageTypes.PositionMessage, msgData);
+        sendMessage(isNavigating ? MessageTypes.NextStepMessage : MessageTypes.PositionMessage, msgData);
     }
 
     /**
@@ -337,13 +337,15 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
         @Override
         public void newRouteIsCalculated(boolean newRoute) {
             cleanRouteData();
+            updateNavigationSteps();
 
             // Get the first instruction
             List<RouteDirectionInfo> directionInfos = routing.getRouteDirections();
             if (directionInfos.size() > 0) {
                 RouteDirectionInfo firstStep = directionInfos.get(0);
-
-                sendMessage(MessageTypes.NewRouteMessage, createCurrentStepBundle(firstStep));
+                HashMap<String, Object> data = createCurrentStepBundle(firstStep);
+                data.put(MessageDataKeys.MapPolygonData, createCurrentPositionMap());
+                sendMessage(MessageTypes.NewRouteMessage, data);
             }
         }
 
@@ -380,7 +382,7 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
         m.put(MessageDataKeys.TurnType, info.getTurnType().toXmlString());
         m.put(MessageDataKeys.TurnAngle, info.getTurnType().getTurnAngle());
         m.put(MessageDataKeys.Distance, info.distance); // evtl. via currentInfo.distanceTo
-        m.put(MessageDataKeys.StreetName, info.getStreetName());
+        m.put(MessageDataKeys.RoutingDescription, info.getDescriptionRoute(application));
         m.put(MessageDataKeys.RouteProgressPercentage, percentage);
         return m;
     }
