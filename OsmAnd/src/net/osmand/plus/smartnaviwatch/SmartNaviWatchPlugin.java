@@ -398,10 +398,8 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
          */
         @Override
         public void updateLocation(Location location) {
-            if (locationChangeIsSignificant(lastKnownLocation, location)) {
+            if (locationChangeIsSignificant(lastKnownLocation, location) && location != null) {
                 lastKnownLocation = location;
-
-
                 updateNavigationSteps();
             }
         }
