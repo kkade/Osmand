@@ -128,7 +128,7 @@ public class RouteLayer extends OsmandMapLayer {
 		if (helper.getFinalLocation() != null && helper.getRoute().isCalculated()) {
 			updatePaints(settings, tileBox);
 			if(coloredArrowUp == null) {
-				Bitmap originalArrowUp = BitmapFactory.decodeResource(view.getResources(), R.drawable.list_warnings_traffic_calming, null);
+				Bitmap originalArrowUp = BitmapFactory.decodeResource(view.getResources(), R.drawable.h_arrow, null);
 				coloredArrowUp = originalArrowUp;
 //				coloredArrowUp = Bitmap.createScaledBitmap(originalArrowUp, originalArrowUp.getWidth() * 3 / 4,	
 //						originalArrowUp.getHeight() * 3 / 4, true);

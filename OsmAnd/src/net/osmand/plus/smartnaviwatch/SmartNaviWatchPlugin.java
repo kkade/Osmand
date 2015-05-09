@@ -1,7 +1,6 @@
 package net.osmand.plus.smartnaviwatch;
 
 import android.app.Activity;
-import android.util.Log;
 
 import com.jwetherell.openmap.common.GreatCircle;
 import com.jwetherell.openmap.common.LatLonPoint;
@@ -96,8 +95,6 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
         if(stepsAreDifferent(currentInfo, n)) {
             currentInfo = n;
             hasNotified = false;
-
-          if (currentInfo != null) application.showShortToastMessage("new step: " + currentInfo.directionInfo.getDescriptionRoute(application));
         }
 
         // Check distance to the current step, if smaller than a certain radius,
@@ -122,7 +119,6 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
      */
     @Override
     public void messageReceived(NavigationMessage message) {
-        application.showToastMessage(message.getMessageType());
         switch(message.getMessageType()) {
             case MessageTypes.PositionRequest:
                 findLocationAndRespond();
@@ -175,8 +171,6 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
             } catch(IOException ex) {}
 
             if (res != null){
-                application.showToastMessage(res.size()+"");
-
                 // Set the users position and the current view range
                 c.setUserPosition(new PolygonPoint(MapUtils.get31TileNumberX(lastKnownLocation.getLongitude()), MapUtils.get31TileNumberY(lastKnownLocation.getLatitude())));
                 c.setTopLeftViewRange(new PolygonPoint(request.getLeft(), request.getTop()));
@@ -295,9 +289,6 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
                 }
                 break;
         }
-
-        Log.d("type ", "got " + s + " created " + result);
-
 
         return result;
     }
