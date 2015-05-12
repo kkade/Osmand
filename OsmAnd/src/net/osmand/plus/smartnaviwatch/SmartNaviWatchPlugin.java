@@ -466,7 +466,7 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
      */
     @Override
     public String getDescription() {
-        return "Sends data to your watch.";
+        return "This plugin sends data to the corresponding SmartNaviWatch-App on your connected Android Wear device. It enables you to see your current location and navigation infos directly on your wrist.";
     }
 
     /**
