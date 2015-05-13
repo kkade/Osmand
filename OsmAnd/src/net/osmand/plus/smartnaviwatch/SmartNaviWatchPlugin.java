@@ -137,6 +137,7 @@ public class SmartNaviWatchPlugin extends OsmandPlugin implements IMessageListen
         MapPolygonCollection map = createCurrentPositionMap();
         msgData.put(MessageDataKeys.MapPolygonData, map);
         msgData.put(MessageDataKeys.LocationName, map.getLocationName());
+        msgData.put(MessageDataKeys.LocationAccuracy, lastKnownLocation.getAccuracy());
         sendMessage(isNavigating ? MessageTypes.NextStepMessage : MessageTypes.PositionMessage, msgData);
     }
 
